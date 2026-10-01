@@ -202,6 +202,7 @@ export default function Home() {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [projectName, setProjectName] = useState<string>('');
   const [username, setUsername] = useState('davis4n');
   const DEFAULT_AVATAR = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23e5e5e5'/%3E%3Ccircle cx='50' cy='35' r='18' fill='%23a3a3a3'/%3E%3Cpath d='M20 90 a30 30 0 0 1 60 0' fill='%23a3a3a3'/%3E%3C/svg%3E";
   const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
@@ -253,6 +254,7 @@ export default function Home() {
         const latestPost = saved[0];
         if (latestPost.slides && latestPost.slides.length > 0) {
           setSlides(latestPost.slides);
+          if (latestPost.name) setProjectName(latestPost.name);
           if (latestPost.username) setUsername(latestPost.username);
           if (latestPost.avatarUrl) setAvatarUrl(latestPost.avatarUrl);
           if (latestPost.globalPalette) setGlobalPalette(latestPost.globalPalette);
@@ -292,6 +294,7 @@ export default function Home() {
   const loadPost = (post: SavedPost) => {
     if (confirm(`Deseja carregar a postagem "${post.name || 'selecionada'}"? O design atual será substituído.`)) {
       setSlides(post.slides);
+      if (post.name) setProjectName(post.name);
       setUsername(post.username);
       setAvatarUrl(post.avatarUrl);
       setGlobalPalette(post.globalPalette);
@@ -470,7 +473,7 @@ export default function Home() {
       const firstHighlight = slides[0]?.blocks.find(b => b.type === 'highlight')?.text.replace(/\n/g, ' ') || `Carrossel ${saved.length + 1}`;
       const newPost: SavedPost = {
         id: Date.now().toString(),
-        name: customName || firstHighlight,
+        name: customName || projectName.trim() || firstHighlight,
         date: new Date().toISOString(),
         slides: JSON.parse(JSON.stringify(slides)), // deep clone to preserve exact state
         username,
@@ -1227,21 +1230,21 @@ export default function Home() {
           className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${activeStep === 'colors' ? 'bg-neutral-100 text-blue-600' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'}`}
         >
           <Palette className="w-6 h-6" />
-          <span className="text-[10px] font-semibold">1. Cores</span>
+          <span className="text-[10px] font-semibold">Cores</span>
         </button>
         <button 
           onClick={() => setActiveStep('content')}
           className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${activeStep === 'content' ? 'bg-neutral-100 text-blue-600' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'}`}
         >
           <Type className="w-6 h-6" />
-          <span className="text-[10px] font-semibold">2. Textos</span>
+          <span className="text-[10px] font-semibold">Textos</span>
         </button>
         <button 
           onClick={() => setActiveStep('elements')}
           className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${activeStep === 'elements' ? 'bg-neutral-100 text-blue-600' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700'}`}
         >
           <Layers className="w-6 h-6" />
-          <span className="text-[10px] font-semibold">3. Elementos</span>
+          <span className="text-[10px] font-semibold">Elementos</span>
         </button>
         <button 
           onClick={() => setActiveStep('posts')}
@@ -1260,9 +1263,19 @@ export default function Home() {
         
         {/* TOPBAR */}
         <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
-          <div className="flex flex-col">
-            <h1 className="font-bold text-neutral-800 tracking-tight">Design Engine</h1>
-            <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-widest">Editorial Social</span>
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-1.5 group">
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Nome do conteúdo"
+                title="Clique para definir o nome do conteúdo"
+                className="font-bold text-base text-neutral-800 placeholder:text-neutral-400 placeholder:font-normal bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-blue-500 focus:bg-neutral-50 rounded px-1.5 py-0.5 -ml-1.5 focus:outline-none transition-all w-60 sm:w-72 md:w-80"
+              />
+              <Edit2 className="w-3.5 h-3.5 text-neutral-400 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+            </div>
+            <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-widest px-0.5">Editorial Social</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">{slides.length}/10 Slides</span>
