@@ -807,22 +807,47 @@ export default function Home() {
       console.error("Erro ao recuperar última postagem salva:", e);
     }
 
-    // Sincronização em segundo plano com a Nuvem (Supabase)
+    // Sincronização e Migração Bidirecional com a Nuvem (Supabase)
     if (isSupabaseConfigured) {
       try {
         const localSaved: SavedPost[] = JSON.parse(localStorage.getItem('savedPosts') || '[]');
-        fetchCloudPosts(localSaved).then(cloudPosts => {
+        
+        fetchCloudPosts([]).then(async (cloudPosts) => {
           if (cloudPosts && cloudPosts.length > 0) {
-            setSavedPostsList(cloudPosts as SavedPost[]);
-            localStorage.setItem('savedPosts', JSON.stringify(cloudPosts));
+            // Nuvem tem posts: se local tiver posts não sincronizados, sobe eles para a nuvem
+            const cloudIds = new Set(cloudPosts.map(p => p.id));
+            const missingInCloud = localSaved.filter(p => !cloudIds.has(p.id));
+            for (const missingPost of missingInCloud) {
+              await syncPostToCloud(missingPost);
+            }
+            const allPosts = [...missingInCloud, ...cloudPosts] as SavedPost[];
+            setSavedPostsList(allPosts);
+            localStorage.setItem('savedPosts', JSON.stringify(allPosts));
+          } else if (localSaved && localSaved.length > 0) {
+            // Nuvem estava vazia: migra automaticamente todo o histórico local existente para o Supabase!
+            for (const post of localSaved) {
+              await syncPostToCloud(post);
+            }
+            setSavedPostsList(localSaved);
           }
         });
 
         const localTemplates: DesignTemplate[] = JSON.parse(localStorage.getItem('customTemplates') || '[]');
-        fetchCloudTemplates(localTemplates).then(cloudTemplates => {
+        fetchCloudTemplates([]).then(async (cloudTemplates) => {
           if (cloudTemplates && cloudTemplates.length > 0) {
-            setCustomTemplates(cloudTemplates as DesignTemplate[]);
-            localStorage.setItem('customTemplates', JSON.stringify(cloudTemplates));
+            const cloudIds = new Set(cloudTemplates.map(t => t.id));
+            const missingInCloud = localTemplates.filter(t => !cloudIds.has(t.id));
+            for (const missingTpl of missingInCloud) {
+              await syncTemplateToCloud(missingTpl);
+            }
+            const allTpls = [...missingInCloud, ...cloudTemplates] as DesignTemplate[];
+            setCustomTemplates(allTpls);
+            localStorage.setItem('customTemplates', JSON.stringify(allTpls));
+          } else if (localTemplates && localTemplates.length > 0) {
+            for (const tpl of localTemplates) {
+              await syncTemplateToCloud(tpl);
+            }
+            setCustomTemplates(localTemplates);
           }
         });
       } catch (err) {
@@ -830,6 +855,77 @@ export default function Home() {
       }
     }
   }, []);
+
+  // Sempre que alternar para a tela inicial ou modelos, busca atualizações mais recentes na nuvem
+  useEffect(() => {
+    if (isSupabaseConfigured && (currentView === 'home' || currentView === 'templates')) {
+      fetchCloudPosts([]).then(cloudPosts => {
+        if (cloudPosts && cloudPosts.length > 0) {
+          setSavedPostsList(cloudPosts as SavedPost[]);
+          localStorage.setItem('savedPosts', JSON.stringify(cloudPosts));
+        }
+      });
+      fetchCloudTemplates([]).then(cloudTemplates => {
+        if (cloudTemplates && cloudTemplates.length > 0) {
+          setCustomTemplates(cloudTemplates as DesignTemplate[]);
+          localStorage.setItem('customTemplates', JSON.stringify(cloudTemplates));
+        }
+      });
+    }
+  }, [currentView]);
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleManualCloudSync = async () => {
+    if (!isSupabaseConfigured) {
+      alert("A sincronização em nuvem não está configurada neste ambiente.");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const localSaved: SavedPost[] = JSON.parse(localStorage.getItem('savedPosts') || '[]');
+      const cloudPosts = await fetchCloudPosts([]);
+      if (cloudPosts && cloudPosts.length > 0) {
+        const cloudIds = new Set(cloudPosts.map(p => p.id));
+        const missingInCloud = localSaved.filter(p => !cloudIds.has(p.id));
+        for (const missingPost of missingInCloud) {
+          await syncPostToCloud(missingPost);
+        }
+        const allPosts = [...missingInCloud, ...cloudPosts] as SavedPost[];
+        setSavedPostsList(allPosts);
+        localStorage.setItem('savedPosts', JSON.stringify(allPosts));
+      } else if (localSaved && localSaved.length > 0) {
+        for (const p of localSaved) {
+          await syncPostToCloud(p);
+        }
+        setSavedPostsList(localSaved);
+      }
+
+      const localTemplates: DesignTemplate[] = JSON.parse(localStorage.getItem('customTemplates') || '[]');
+      const cloudTemplates = await fetchCloudTemplates([]);
+      if (cloudTemplates && cloudTemplates.length > 0) {
+        const cloudIds = new Set(cloudTemplates.map(t => t.id));
+        const missingInCloud = localTemplates.filter(t => !cloudIds.has(t.id));
+        for (const missingTpl of missingInCloud) {
+          await syncTemplateToCloud(missingTpl);
+        }
+        const allTpls = [...missingInCloud, ...cloudTemplates] as DesignTemplate[];
+        setCustomTemplates(allTpls);
+        localStorage.setItem('customTemplates', JSON.stringify(allTpls));
+      } else if (localTemplates && localTemplates.length > 0) {
+        for (const t of localTemplates) {
+          await syncTemplateToCloud(t);
+        }
+        setCustomTemplates(localTemplates);
+      }
+      alert("Sincronização com o Supabase concluída com sucesso! Todo o seu histórico está na nuvem.");
+    } catch (e) {
+      console.error("Erro na sincronização manual:", e);
+      alert("Ocorreu um erro ao sincronizar com o Supabase. Tente novamente.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     if (activeStep === 'posts') {
@@ -1951,23 +2047,26 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Status de Sincronização em Nuvem */}
-            <div 
+            {/* Status de Sincronização em Nuvem (Clicável para forçar sincronia) */}
+            <button 
+              type="button"
+              onClick={handleManualCloudSync}
+              disabled={isSyncing}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all border ${
                 isSupabaseConfigured 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 cursor-pointer active:scale-95' 
                   : 'bg-amber-50 text-amber-800 border-amber-200'
-              }`}
+              } ${isSyncing ? 'opacity-75 animate-pulse' : ''}`}
               title={
                 isSupabaseConfigured 
-                  ? 'Sincronização em Nuvem ativa com Supabase! Modelos e carrosséis acessíveis em qualquer dispositivo.'
-                  : 'Modo Local (salvo neste navegador). Para sincronizar entre dispositivos, adicione as chaves do Supabase no arquivo .env.local'
+                  ? 'Nuvem Supabase ativa! Clique para sincronizar agora.'
+                  : 'Modo Local (salvo neste navegador).'
               }
             >
               {isSupabaseConfigured ? (
                 <>
-                  <Cloud className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="hidden md:inline">Nuvem Conectada</span>
+                  <Cloud className={`w-3.5 h-3.5 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span className="hidden md:inline">{isSyncing ? 'Sincronizando...' : 'Nuvem Conectada'}</span>
                 </>
               ) : (
                 <>
@@ -1975,7 +2074,7 @@ export default function Home() {
                   <span className="hidden md:inline">Salvo Localmente</span>
                 </>
               )}
-            </div>
+            </button>
 
             {slides.length > 0 && (
               <button
@@ -2417,23 +2516,26 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Indicador de Nuvem no Editor */}
-            <div 
+            {/* Indicador de Nuvem no Editor (Clicável para sincronizar) */}
+            <button 
+              type="button"
+              onClick={handleManualCloudSync}
+              disabled={isSyncing}
               className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${
                 isSupabaseConfigured 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 cursor-pointer active:scale-95' 
                   : 'bg-amber-50 text-amber-800 border-amber-200'
-              }`}
+              } ${isSyncing ? 'opacity-75 animate-pulse' : ''}`}
               title={
                 isSupabaseConfigured 
-                  ? 'Nuvem Supabase ativa: alterações sincronizadas entre dispositivos.' 
-                  : 'Modo local: salvo apenas neste dispositivo. Adicione as chaves no .env.local para ativar a nuvem.'
+                  ? 'Nuvem Supabase ativa: clique para sincronizar agora.' 
+                  : 'Modo local: salvo apenas neste dispositivo.'
               }
             >
               {isSupabaseConfigured ? (
                 <>
-                  <Cloud className="w-3 h-3 text-emerald-600" />
-                  <span>Nuvem</span>
+                  <Cloud className={`w-3 h-3 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Sincronizando...' : 'Nuvem'}</span>
                 </>
               ) : (
                 <>
@@ -2441,7 +2543,7 @@ export default function Home() {
                   <span>Local</span>
                 </>
               )}
-            </div>
+            </button>
 
             <button
               type="button"
