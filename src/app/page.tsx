@@ -50,6 +50,15 @@ export const DEFAULT_PALETTES: ColorPalette[] = [
   },
   // Grupo: Elegância Editorial
   {
+    id: 'clean-soft-gray',
+    group: 'Elegância Editorial',
+    name: 'Soft Grey Clean',
+    bgColor: '#f3f4f7',
+    textColor: '#1A1A1A',
+    highlightColor: '#D9381E',
+    secondaryTextColor: '#64748B',
+  },
+  {
     id: 'linen-terracotta',
     group: 'Elegância Editorial',
     name: 'Linho & Terracotta',
@@ -1247,7 +1256,7 @@ export default function Home() {
       {renderSidebarContent()}
 
       {/* ÁREA PRINCIPAL */}
-      <main className="flex-1 flex flex-col relative overflow-hidden bg-neutral-900">
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-[#f3f4f7]">
         
         {/* TOPBAR */}
         <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm">
@@ -1271,10 +1280,10 @@ export default function Home() {
         <div className="flex-1 overflow-auto p-12 custom-scrollbar flex flex-col relative">
           
           {/* ZOOM CONTROLS */}
-          <div className="absolute bottom-8 right-8 bg-neutral-800 text-white shadow-xl rounded-full border border-neutral-700 flex items-center p-1.5 z-50">
-            <button onClick={() => setCanvasZoom(z => Math.max(0.3, z - 0.1))} className="p-2 hover:bg-neutral-700 rounded-full transition-colors"><Minus className="w-4 h-4" /></button>
+          <div className="absolute bottom-8 right-8 bg-white text-neutral-800 shadow-xl rounded-full border border-neutral-200 flex items-center p-1.5 z-50">
+            <button onClick={() => setCanvasZoom(z => Math.max(0.3, z - 0.1))} className="p-2 hover:bg-neutral-100 rounded-full transition-colors"><Minus className="w-4 h-4" /></button>
             <span className="text-xs font-semibold w-14 text-center">{Math.round(canvasZoom * 100)}%</span>
-            <button onClick={() => setCanvasZoom(z => Math.min(2, z + 0.1))} className="p-2 hover:bg-neutral-700 rounded-full transition-colors"><Plus className="w-4 h-4" /></button>
+            <button onClick={() => setCanvasZoom(z => Math.min(2, z + 0.1))} className="p-2 hover:bg-neutral-100 rounded-full transition-colors"><Plus className="w-4 h-4" /></button>
           </div>
 
           <div className="flex-1 min-h-max flex items-center justify-center pb-12 pt-12">
@@ -1291,7 +1300,7 @@ export default function Home() {
                   className={`relative group flex-shrink-0 flex flex-col justify-center overflow-hidden transition-all ${
                     isExporting 
                       ? 'rounded-none shadow-none ring-0' 
-                      : `rounded-[32px] shadow-2xl cursor-pointer ${activeSlideId === slide.id ? 'ring-4 ring-blue-500 ring-offset-4 ring-offset-neutral-900' : 'hover:ring-2 hover:ring-white/30'}`
+                      : `rounded-[32px] shadow-2xl cursor-pointer ${activeSlideId === slide.id ? 'ring-4 ring-blue-500 ring-offset-4 ring-offset-[#f3f4f7]' : 'hover:ring-2 hover:ring-black/10'}`
                   }`}
                   // 400x500 preserva o ratio de 4:5 (ex: 1080x1350)
                   style={{ width: "400px", height: "500px", backgroundColor: slide.palette.bgColor }}
