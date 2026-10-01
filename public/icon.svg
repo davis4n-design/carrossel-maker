@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="8" fill="#000000"/>
+  <!-- Card traseiro (slide seguinte) -->
+  <rect x="13" y="6" width="13" height="16" rx="2.5" fill="#525252" stroke="#262626" stroke-width="0.75"/>
+  <!-- Card frontal (slide principal) -->
+  <rect x="6" y="9" width="13" height="16" rx="2.5" fill="#FFFFFF"/>
+  <!-- Elementos de conteúdo do carrossel -->
+  <rect x="8.5" y="12.5" width="8" height="2" rx="1" fill="#000000"/>
+  <rect x="8.5" y="16" width="5.5" height="1.5" rx="0.75" fill="#A3A3A3"/>
+  <!-- Indicadores de carrossel (bolinhas) -->
+  <circle cx="9.5" cy="21.5" r="0.9" fill="#000000"/>
+  <circle cx="12" cy="21.5" r="0.9" fill="#D4D4D4"/>
+  <circle cx="14.5" cy="21.5" r="0.9" fill="#D4D4D4"/>
+</svg>
